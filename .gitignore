@@ -6,7 +6,8 @@
 *.sublime-workspace
 *.suo
 *.swp
-.bundle/
+.bundle/*
+!.bundle/config.release
 .idea/
 .vscode/
 .loadpath
