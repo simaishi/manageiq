@@ -33,7 +33,7 @@ task :release do
     FileUtils.ln_s(root.join("../manageiq-appliance/manageiq-appliance-dependencies.rb"),
                    appliance_dependency, :force => true)
 
-    exit $?.exitstatus unless Bundler.unbundled_system("BUNDLE_IGNORE_CONFIG=true APPLIANCE=true bundle lock --update --conservative --patch --lockfile #{lock_release}")
+    exit $?.exitstatus unless Bundler.unbundled_system({"BUNDLE_IGNORE_CONFIG" => "true", "APPLIANCE" => "true"}, "bundle lock --update --conservative --patch --lockfile #{lock_release}")
 
     FileUtils.rm([appliance_dependency, bundle_config])
 
