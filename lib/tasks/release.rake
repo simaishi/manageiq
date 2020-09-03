@@ -20,13 +20,36 @@ task :release do
   version_file = root.join("VERSION")
   File.write(version_file, version)
 
+  # Update Gemfile.lock if exist
+  lock_release = root.join("Gemfile.lock.release")
+  if lock_release.exist?
+    bundle_config = root.join(".bundle/config")
+    appliance_dependency = root.join("bundler.d/manageiq-appliance-dependencies.rb")
+
+    FileUtils.ln_s("#{bundle_config.to_s}.release", bundle_config, :force => true)
+    # TODO: Save Gemfile.lock before linking?
+    FileUtils.ln_s(lock_release, lock_release.to_s.chomp(".release"), :force => true)
+    # TODO: Need to ensure right branch is checked out and it's clean?
+    FileUtils.ln_s(root.join("../manageiq-appliance/manageiq-appliance-dependencies.rb"),
+                   appliance_dependency, :force => true)
+
+    exit $?.exitstatus unless Bundler.unbundled_system("BUNDLE_IGNORE_CONFIG=true APPLIANCE=true bundle lock --update --conservative --patch --lockfile #{lock_release}")
+
+    FileUtils.rm([appliance_dependency, bundle_config])
+
+    content = lock_release.read
+    lock_release.write(content.gsub("branch: #{branch}", "tag: #{version}"))
+  end
+
   # Change git based gem source to tag reference in Gemfile
   gemfile = root.join("Gemfile")
   content = gemfile.read
   gemfile.write(content.gsub(":branch => \"#{branch}\"", ":tag => \"#{version}\""))
 
   # Commit
-  exit $?.exitstatus unless system("git add #{version_file} #{gemfile}")
+  files_to_update = [version_file, gemfile]
+  files_to_update << lock_release if lock_release.exist?
+  exit $?.exitstatus unless system("git add #{files_to_update.join(" ")}")
   exit $?.exitstatus unless system("git commit -m 'Release #{version}'")
 
   # Tag
